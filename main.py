@@ -93,7 +93,7 @@ class VoiceConverterApp(QWidget):
         tts = gTTS(translated_text, lang='ja')
         tts.save("translated_audio.mp3")
         print("Debug: Audio file saved")
-        print(lang.tts_langs())
+        # print(lang.tts_langs())
         # Play the audio using QMediaPlayer
         print("Debug: Playing audio")
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile("translated_audio.mp3")))
