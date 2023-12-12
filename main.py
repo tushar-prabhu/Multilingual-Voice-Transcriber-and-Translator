@@ -1,10 +1,12 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
-from PyQt5.QtCore import QThread, pyqtSignal, QUrl
+
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QComboBox, QGraphicsOpacityEffect
+from PyQt5.QtCore import QThread, pyqtSignal, QUrl, QPropertyAnimation, QEasingCurve
+from PyQt5.QtGui import QFont
 import speech_recognition as sr
 from translate import Translator
-from gtts import gTTS,lang
+from gtts import gTTS, lang
 
 class SpeechRecognitionThread(QThread):
     recognition_result = pyqtSignal(str)
@@ -39,12 +41,92 @@ class VoiceConverterApp(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        self.setGeometry(100, 100, 600, 300)
+        self.setWindowTitle('Voice Converter App')
+
         self.start_button = QPushButton('Start Recording', self)
+        self.start_button.setStyleSheet(
+            "QPushButton { background-color: #4CAF50; border: none; color: white; padding: 10px; font-size: 16px; border-radius: 6px; }"
+            "QPushButton:hover { background-color: #45a049; }"
+        )
+
         self.spoken_label = QLabel('Spoken Text:', self)
+        self.spoken_label.setFont(QFont('Arial', 12))
+
         self.translated_label = QLabel('Translated Text:', self)
+        self.translated_label.setFont(QFont('Arial', 12))
+
+        self.language_dropdown = QComboBox(self)
+        self.language_dropdown.setFont(QFont('Arial', 12))
+        self.language_dict = {
+            # ... (your language dictionary)
+            "Select Language": "",
+            "Afrikaans": "af",
+            "Arabic": "ar",
+            "Bulgarian": "bg",
+            "Bengali": "bn",
+            "Bosnian": "bs",
+            "Catalan": "ca",
+            "Czech": "cs",
+            "Danish": "da",
+            "German": "de",
+            "Greek": "el",
+            "English": "en",
+            "Spanish": "es",
+            "Estonian": "et",
+            "Finnish": "fi",
+            "French": "fr",
+            "Gujarati": "gu",
+            "Hindi": "hi",
+            "Croatian": "hr",
+            "Hungarian": "hu",
+            "Indonesian": "id",
+            "Icelandic": "is",
+            "Italian": "it",
+            "Hebrew": "iw",
+            "Japanese": "ja",
+            "Javanese": "jw",
+            "Khmer": "km",
+            "Kannada": "kn",
+            "Korean": "ko",
+            "Latin": "la",
+            "Latvian": "lv",
+            "Malayalam": "ml",
+            "Marathi": "mr",
+            "Malay": "ms",
+            "Myanmar (Burmese)": "my",
+            "Nepali": "ne",
+            "Dutch": "nl",
+            "Norwegian": "no",
+            "Polish": "pl",
+            "Portuguese": "pt",
+            "Romanian": "ro",
+            "Russian": "ru",
+            "Sinhala": "si",
+            "Slovak": "sk",
+            "Albanian": "sq",
+            "Serbian": "sr",
+            "Sundanese": "su",
+            "Swedish": "sv",
+            "Swahili": "sw",
+            "Tamil": "ta",
+            "Telugu": "te",
+            "Thai": "th",
+            "Filipino": "tl",
+            "Turkish": "tr",
+            "Ukrainian": "uk",
+            "Urdu": "ur",
+            "Vietnamese": "vi",
+            "Chinese (Simplified)": "zh-CN",
+            "Chinese (Mandarin/Taiwan)": "zh-TW",
+            "Chinese (Mandarin)": "zh"
+            # Add more languages as needed
+        }
+        self.language_dropdown.addItems(list(self.language_dict.keys()))
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.start_button)
+        vbox.addWidget(self.language_dropdown)
         vbox.addWidget(self.spoken_label)
         vbox.addWidget(self.translated_label)
 
@@ -53,15 +135,29 @@ class VoiceConverterApp(QWidget):
         self.start_button.clicked.connect(self.start_recording)
 
         self.recording = False
-        self.translator = Translator(to_lang="ja")
+        self.selected_language = ""
+        self.translator = Translator(to_lang=self.selected_language)
 
-        # Create a separate thread for speech recognition
         self.recognition_thread = SpeechRecognitionThread(sr.Recognizer())
         self.recognition_thread.recognition_result.connect(self.translate_and_play)
         self.recognition_thread.finished.connect(self.on_recognition_finished)
 
-        # Create a QMediaPlayer object for audio playback
         self.player = QMediaPlayer()
+
+        self.fade_in_animation()
+
+    def fade_in_animation(self):
+        # Set up opacity effect for fade-in animation
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+
+        # Create animation
+        self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.animation.setDuration(1000)
+        self.animation.setStartValue(0)
+        self.animation.setEndValue(1)
+        self.animation.setEasingCurve(QEasingCurve.InOutQuad)
+        self.animation.start()
 
     def start_recording(self):
         if not self.recording:
@@ -69,54 +165,46 @@ class VoiceConverterApp(QWidget):
             self.start_button.setEnabled(False)
             self.spoken_label.clear()
             self.translated_label.clear()
-            self.recognition_thread.start()
+            self.selected_language = self.language_dict[self.language_dropdown.currentText()]
+            if self.selected_language:
+                self.translator = Translator(to_lang=self.selected_language)
+                self.recognition_thread.start()
 
     def translate_and_play(self, text):
         print("Debug: Translating text")
-        # Display spoken text
         self.spoken_label.setText('Spoken Text: ' + text)
 
-        # Translate the text to Japanese
         translated_text = self.translator.translate(text)
 
         print("Debug: Text translated")
 
-        # Display translated text
         self.translated_label.setText('Translated Text: ' + translated_text)
 
-        # Stop QMediaPlayer and clear its media
         self.player.stop()
         self.player.setMedia(QMediaContent())
 
-        # Save the translated text as an audio file
         print("Debug: Saving audio file")
-        tts = gTTS(translated_text, lang='ja')
+        tts = gTTS(translated_text, lang=self.selected_language)
         tts.save("translated_audio.mp3")
         print("Debug: Audio file saved")
-        # print(lang.tts_langs())
-        # Play the audio using QMediaPlayer
+
         print("Debug: Playing audio")
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile("translated_audio.mp3")))
         self.player.play()
         print("Debug: Audio played")
 
     def on_recognition_finished(self):
-        # Delete the finished QThread
         self.recognition_thread.deleteLater()
 
-        # Create a new QThread for speech recognition
         self.recognition_thread = SpeechRecognitionThread(sr.Recognizer())
         self.recognition_thread.recognition_result.connect(self.translate_and_play)
         self.recognition_thread.finished.connect(self.on_recognition_finished)
 
-        # Reset the recording flag and enable the start button
         self.recording = False
         self.start_button.setEnabled(True)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     converter_app = VoiceConverterApp()
-    converter_app.setWindowTitle('Voice Converter App')
-    converter_app.resize(400, 200)
     converter_app.show()
-    app.exec_()
+    sys.exit(app.exec_())
