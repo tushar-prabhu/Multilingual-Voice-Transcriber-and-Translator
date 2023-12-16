@@ -1,12 +1,12 @@
 import sys
-
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QComboBox, QGraphicsOpacityEffect
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QComboBox, \
+    QGraphicsOpacityEffect, QScrollArea
 from PyQt5.QtCore import QThread, pyqtSignal, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QFont
 import speech_recognition as sr
 from translate import Translator
-from gtts import gTTS, lang
+from gtts import gTTS
 
 class SpeechRecognitionThread(QThread):
     recognition_result = pyqtSignal(str)
@@ -50,16 +50,22 @@ class VoiceConverterApp(QWidget):
             "QPushButton:hover { background-color: #45a049; }"
         )
 
-        self.spoken_label = QLabel('Spoken Text:', self)
+        self.spoken_scroll_area = QScrollArea(self)
+        self.spoken_label = QLabel('Spoken Text:', self.spoken_scroll_area)
         self.spoken_label.setFont(QFont('Arial', 12))
+        self.spoken_scroll_area.setWidgetResizable(True)
+        self.spoken_scroll_area.setWidget(self.spoken_label)
 
-        self.translated_label = QLabel('Translated Text:', self)
+        self.translated_scroll_area = QScrollArea(self)
+        self.translated_label = QLabel('Translated Text:', self.translated_scroll_area)
         self.translated_label.setFont(QFont('Arial', 12))
+        self.translated_scroll_area.setWidgetResizable(True)
+        self.translated_scroll_area.setWidget(self.translated_label)
 
         self.language_dropdown = QComboBox(self)
         self.language_dropdown.setFont(QFont('Arial', 12))
         self.language_dict = {
-            # ... (your language dictionary)
+            # ... (unchanged)
             "Select Language": "",
             "Afrikaans": "af",
             "Arabic": "ar",
@@ -120,15 +126,14 @@ class VoiceConverterApp(QWidget):
             "Chinese (Simplified)": "zh-CN",
             "Chinese (Mandarin/Taiwan)": "zh-TW",
             "Chinese (Mandarin)": "zh"
-            # Add more languages as needed
         }
         self.language_dropdown.addItems(list(self.language_dict.keys()))
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.start_button)
         vbox.addWidget(self.language_dropdown)
-        vbox.addWidget(self.spoken_label)
-        vbox.addWidget(self.translated_label)
+        vbox.addWidget(self.spoken_scroll_area)
+        vbox.addWidget(self.translated_scroll_area)
 
         self.setLayout(vbox)
 
@@ -136,7 +141,7 @@ class VoiceConverterApp(QWidget):
 
         self.recording = False
         self.selected_language = ""
-        self.translator = Translator(to_lang=self.selected_language)
+        self.translator = Translator(to_lang="")  # Set a default value for to_lang
 
         self.recognition_thread = SpeechRecognitionThread(sr.Recognizer())
         self.recognition_thread.recognition_result.connect(self.translate_and_play)
@@ -147,11 +152,9 @@ class VoiceConverterApp(QWidget):
         self.fade_in_animation()
 
     def fade_in_animation(self):
-        # Set up opacity effect for fade-in animation
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
 
-        # Create animation
         self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
         self.animation.setDuration(1000)
         self.animation.setStartValue(0)
@@ -165,16 +168,17 @@ class VoiceConverterApp(QWidget):
             self.start_button.setEnabled(False)
             self.spoken_label.clear()
             self.translated_label.clear()
-            self.selected_language = self.language_dict[self.language_dropdown.currentText()]
+            self.selected_language = self.language_dict.get(self.language_dropdown.currentText(), "")
             if self.selected_language:
-                self.translator = Translator(to_lang=self.selected_language)
+                self.translator.to_lang = self.selected_language  # Set the target language
                 self.recognition_thread.start()
 
     def translate_and_play(self, text):
         print("Debug: Translating text")
         self.spoken_label.setText('Spoken Text: ' + text)
 
-        translated_text = self.translator.translate(text)
+        translator = Translator(to_lang=self.selected_language)
+        translated_text = translator.translate(text)
 
         print("Debug: Text translated")
 
