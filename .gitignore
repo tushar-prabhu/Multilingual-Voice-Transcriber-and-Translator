@@ -1,0 +1,11 @@
+translated_audio.mp3
+
+main.spec
+
+dist/
+
+build/
+
+venv/
+
+.idea/

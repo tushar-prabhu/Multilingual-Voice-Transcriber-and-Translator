@@ -8,6 +8,7 @@ import speech_recognition as sr
 from translate import Translator
 from gtts import gTTS
 
+
 class SpeechRecognitionThread(QThread):
     recognition_result = pyqtSignal(str)
     status_signal = pyqtSignal(str)
@@ -35,6 +36,7 @@ class SpeechRecognitionThread(QThread):
         except Exception as e:
             self.status_signal.emit(f"An error occurred: {str(e)}")
 
+
 class VoiceConverterApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -43,7 +45,7 @@ class VoiceConverterApp(QWidget):
 
     def init_ui(self):
         self.setGeometry(100, 100, 800, 600)  # Increased window size
-        self.setWindowTitle('VoxTranslate')
+        self.setWindowTitle('Multilingual Voice Transcriber and Translator')
 
         self.start_button = QPushButton('Start Recording', self)
         self.start_button.setStyleSheet(
@@ -260,6 +262,7 @@ class VoiceConverterApp(QWidget):
         clipboard = QApplication.clipboard()
         clipboard.setText(translated_text)
         self.update_status("Translated text copied to clipboard")
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
